@@ -1,0 +1,10 @@
+- clean: ['~']
+
+- defaults:
+    link:
+        relink: true
+        canonicalize: true
+
+- link:
+    ~/.config/kitty: kitty
+    ~/.config/qtile: qtile
