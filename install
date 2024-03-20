@@ -2,7 +2,13 @@
 
 set -e
 
-CONFIG="install.conf.yaml"
+if [[ -z $1 ]] then
+    CONFIG_PREFIX="user" # Default value
+else
+    CONFIG_PREFIX=$1
+fi
+
+CONFIG_SUFFIX=".conf.yaml"
 DOTBOT_DIR="dotbot"
 
 DOTBOT_BIN="bin/dotbot"
@@ -12,4 +18,4 @@ cd "$BASEDIR"
 git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
 git submodule update --init --recursive "${DOTBOT_DIR}"
 
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG_PREFIX}${CONFIG_SUFFIX}" "${@}"
