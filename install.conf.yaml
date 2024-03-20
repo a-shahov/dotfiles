@@ -8,3 +8,6 @@
 - link:
     ~/.config/kitty: kitty
     ~/.config/qtile: qtile
+
+- shell:
+    - [git submodule update --init --recursive, Installig submodules]
