@@ -10,4 +10,5 @@
     ~/.config/qtile: qtile
 
 - shell:
-    - [git submodule update --init --recursive, Installig submodules]
+    - [git submodule update --init --recursive, Installing submodules]
+    - [./install_fonts.sh, Installing fonts]
