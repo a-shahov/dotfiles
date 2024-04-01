@@ -1,0 +1,227 @@
+from contextlib import suppress
+
+from libqtile import bar, layout, qtile, widget
+from libqtile.config import Click, Drag, Group, Match, Screen
+from libqtile.config import EzKey as Key
+from libqitle.lazy import lazy
+from libqtile.utils import guess_terminal
+from libqtile.log_utils import logger
+
+
+terminal = guess_terminal("kitty")
+
+@lazy.function
+def togroup_and_switch(qtile, prompt="to_and_switch", widget="prompt"):
+    """
+    Launch prompt widget to move current window to a given group
+    and to switch to a given group
+    """
+    def func(group):
+        if group:
+            with suppress(KeyError):
+                qtile.groups_map[group].toscreen()
+            qtile.move_to_group(group)
+                
+    if not qtile.current_window:
+        logger.warning("No window to move")
+        return
+
+    if not (mb := qtile.widgets_map.get(widget)):
+        logger.error("No widget named '%s' present.", widget)
+        return
+
+    mb.start_input(prompt, func, "group", strict_completer=True)
+
+_old_layouts = {
+    "zoomy": {},
+    "max": {},
+}
+
+@lazy.function
+def toggle_layout(qtile, layout_name, layouts, old_layouts):
+    key = (qtile.current_screen.info()["index"], qtile.current_group.info()["name"]) 
+    current_layout_name = qtile.current_layout.info()["name"]
+    current_layout = {key: current_layout_name}
+    old_layout_name = old_layouts.pop(key, None)
+
+    if current_layout_name == layout_name and not old_layout_name:
+        return
+
+    if current_layout_name == layout_name and old_layout_name:
+        for layout in layouts:
+            if layout.name == old_layout_name:
+                qtile.to_layout_index(layouts.index(layout))
+                return
+        else:
+            logger.warning(
+                "Unexpected behaviour in toggle_layout current layout: '%s' old_layout: '%s'",
+                current_layout_name, old_layout_name,
+            )
+            return
+
+    for layout in layouts:
+        if layout.name == layout_name:
+            qtile.to_layout_index(layouts.index(layout))
+            old_layouts.update(current_layout)
+            return
+    
+    logger.warning(
+        "Unexpected behaviour in toggle_layout current layout: '%s' old_layout: '%s'",
+        current_layout_name, old_layout_name,
+    )
+ 
+layouts = [
+    layout.Columns(grow_amount=15, border_width=2),
+    layout.TreeTab(
+        place_right=True, border_width=2,
+        sections=["social", "youtube", "docs", "other"],
+    ),
+    layout.Stack(num_stacks=2, border_width=2),
+    layout.Zoommy(border_width=2),
+    layout.Max(),
+]
+
+keys = [
+    # Columns layout
+    Key("M-h", lazy.layout.left()),
+    Key("M-l", lazy.layout.right()),
+    Key("M-j", lazy.layout.down()),
+    Key("M-k", lazy.layout.up())
+    Key("M-S-h", lazy.layout.shuffle_left()),
+    Key("M-S-l", lazy.layout.shuffle_right()),
+    Key("M-S-j", lazy.layout.shuffle_down()),
+    Key("M-S-k", lazy.layout.shuffle_up()),
+    Key("M-S-h", lazy.layout.grow_left(), lazy.layout.move_left().when(layout="treetab")),
+    Key("M-C-l", lazy.layout.grow_right(), lazy.layout.move_right().when(layout="treetab")),
+    Key("M-C-j", lazy.layout.grow_down(), lazy.layout.move_down()),
+    Key("M-C-k", lazy.layout.grow_up(), lazy.layout.move_up()),
+    Key("M-S-C-h", lazy.layout.swap_column_left()),
+    Key("M-S-C-l", lazy.layout.swap_column_right()),
+    Key("M-<backspace>", lazy.layout.normalize()),
+
+    # Stack layout
+    Key("M-<space>", lazy.layout.next()),
+    Key("M-S-<space>", lazy.layout.previous()),
+    Key("M-S-<return>", lazy.layout.toggle_split()),
+    Key("M-r", lazy.layout.rotate()),
+
+    # TreeTab layout
+    Key("M-u", lazy.layout.section_down()),
+    Key("M-i", lazy.layout.section_up()),
+
+    # Shortcuts for layouts
+    Key("M-z", toggle_layout("zommy", layouts, _old_layouts["zoomy"])),
+    Key("M-x", toggle_layout("max", layouts, _old_layouts["max"])),
+    
+    # Common key bindings
+    Key("M-<return>", lazy.spawn(terminal)),
+    Key("M-<tab>", lazy.next_layout()),
+    Key("M-<tab>", lazy.prev_layout()),
+    Key("M-w", lazy.window.kill()),
+    Key("M-f", lazy.window.toggle_fullscreen()),
+    Key("M-t", lazy.window.toggle_floating()),
+    Key("M-n", lazy.spawncmd()),
+    Key("M-C-q", lazy.shutdown()),
+    Key("M-C-r", lazy.reload_config()),
+    Key("M-m", lazy.togroup()),
+    Key("M-S-m", togroup_and_switch()),
+    Key("M-S-z", lazy.prev_group()),
+    Key("M-S-x", lazy.next_group()),
+]
+
+groups = [Group(i) for i in ("home", "tty", "www", "study", "pdf", "dev", "work", "virt", "other")]
+
+for i, group in enumerate(groups, start=1):
+    keys.extend(
+        [
+            Key(f"M-S-{i}", lazy.group[group.name].toscreen()),
+            Key(i, lazy.window.togroup(group.name, switch_group=True)),
+        ]
+    )
+
+widget_defaults = dict(
+    font="DaddyTimeMono Nerd Font",
+    fontsize=14,
+    padding=5,
+)
+extension_defaults = widget_defaults.copy()
+
+screens = [
+    Screen(
+        bottom=bar.Bar(
+            [
+                widget.CurrentLayout(),
+                widget.GroupBox(),
+                widget.Prompt(),
+                widget.WindowName(),
+                widget.Chord(
+                    chords_colors={
+                        "launch": ("#ff0000", "#ffffff"),
+                    },
+                    name_transform=lambda name: name.upper(),
+                ),
+                widget.TextBox("default config", name="default"),
+                widget.TextBox("Press &lt;M-r&gt; to spawn", foreground="#d75f5f"),
+                # NB Systray is incompatible with Wayland, consider using StatusNotifier instead
+                # widget.StatusNotifier(),
+                widget.Systray(),
+                widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
+                widget.QuickExit(),
+            ],
+            24,
+            # border_width=[2, 0, 2, 0],  # Draw top and bottom borders
+            # border_color=["ff00ff", "000000", "ff00ff", "000000"]  # Borders are magenta
+        ),
+        # You can uncomment this variable if you see that on X11 floating resize/moving is laggy
+        # By default we handle these events delayed to already improve performance, however your system might still be struggling
+        # This variable is set to None (no cap) by default, but you can set it to 60 to indicate that you limit it to 60 events per second
+        # x11_drag_polling_rate = 60,
+    ),
+]
+
+# Drag floating layouts.
+mouse = [
+    Drag([mod], "Button1", lazy.window.set_position_floating(), start=lazy.window.get_position()),
+    Drag([mod], "Button3", lazy.window.set_size_floating(), start=lazy.window.get_size()),
+    Click([mod], "Button2", lazy.window.bring_to_front()),
+]
+
+dgroups_key_binder = None
+dgroups_app_rules = []  # type: list
+follow_mouse_focus = True
+bring_front_click = False
+floats_kept_above = True
+cursor_warp = False
+floating_layout = layout.Floating(
+    float_rules=[
+        # Run the utility of `xprop` to see the wm class and name of an X client.
+        *layout.Floating.default_float_rules,
+        Match(wm_class="confirmreset"),  # gitk
+        Match(wm_class="makebranch"),  # gitk
+        Match(wm_class="maketag"),  # gitk
+        Match(wm_class="ssh-askpass"),  # ssh-askpass
+        Match(title="branchdialog"),  # gitk
+        Match(title="pinentry"),  # GPG key password entry
+    ]
+)
+auto_fullscreen = True
+focus_on_window_activation = "smart"
+reconfigure_screens = True
+
+# If things like steam games want to auto-minimize themselves when losing
+# focus, should we respect this or not?
+auto_minimize = True
+
+# When using the Wayland backend, this can be used to configure input devices.
+wl_input_rules = None
+
+# XXX: Gasp! We're lying here. In fact, nobody really uses or cares about this
+# string besides java UI toolkits; you can see several discussions on the
+# mailing lists, GitHub issues, and other WM documentation that suggest setting
+# this string if your java app doesn't work correctly. We may as well just lie
+# and say that we're a working one by default.
+#
+# We choose LG3D to maximize irony: it is a 3D non-reparenting WM written in
+# java that happens to be on java's whitelist.
+wmname = "LG3D"
+
