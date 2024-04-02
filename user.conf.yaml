@@ -4,10 +4,31 @@
     link:
         relink: true
         canonicalize: true
+    create:
+        mode: 0755
 
 - link:
     ~/.config/kitty: kitty
     ~/.config/qtile: qtile
+    ~/.config/:
+        glob: true
+        path: xdg/*
+    ~/images/wallpapers: wallpapers
+
+- create:
+    ~/.config
+    ~/.cache
+    ~/.local/bin
+    ~/.local/share
+    ~/.local/state
+    ~/.ssh
+        mode: 0700
+    ~/downloads
+    ~/files/videos
+    ~/files/audios
+    ~/files/images/wallpapers
+    ~/remote
+    ~/projects
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
