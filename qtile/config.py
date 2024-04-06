@@ -135,6 +135,8 @@ screens = [
                 #widget.Systray(),
             ],
             36,
+            wallpaper="~/files/images/wallpapers/forest_wallpaper.jpg",
+            wallpaper_mode="fill",
         )
     ),
 ]

@@ -1,3 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-exec /home/user/.local/bin/qtile start
+
+[[ -f ~/.Xresources ]] && xrdb -merge -I$HOME ~/.Xresources
+
+exec $HOME/.local/bin/qtile start

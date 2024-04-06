@@ -31,3 +31,4 @@
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
     - [./install_fonts.sh, Installing fonts]
+    - [touch ~/.Xauthority, Creating .Xauthority file]
