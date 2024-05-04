@@ -11,7 +11,7 @@
     ~/.config:
     ~/.cache:
     ~/.local/bin:
-    ~/.local/share:
+    ~/.local/share/applications:
     ~/.local/state:
     ~/downloads:
     ~/files/videos:
